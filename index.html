@@ -365,8 +365,7 @@
         const MODEL_URL = './models'; 
         let isAiReady = false;
         let faceMatcher = null; 
-        let localUsersMap = {}; // เพิ่ม: ดึงข้อมูลพนักงานเก็บไว้ในเครื่องเพื่อความรวดเร็ว
-        let recentScans = {}; // เพิ่ม: ป้องกันการสแกนซ้ำรัวๆ ในเวลาติดกัน
+        let localUsersMap = {}; 
 
         let currentStream = null;
         let regStream = null; 
@@ -404,10 +403,10 @@
                 .then(users => {
                     const activeUsersWithFace = users.filter(u => u.status === 'ยังทำงานอยู่' && u.hasFace);
                     const labeledFaceDescriptors = [];
-                    localUsersMap = {}; // รีเซ็ตข้อมูล
+                    localUsersMap = {}; 
 
                     activeUsersWithFace.forEach(user => {
-                        localUsersMap[user.idCard] = user; // จัดเก็บข้อมูลพนักงานไว้ในหน่วยความจำเบราว์เซอร์
+                        localUsersMap[user.idCard] = user; 
                         const descriptorsArray = [];
                         user.faces.forEach(faceStr => {
                             try {
@@ -446,13 +445,18 @@
             if (!isAiReady) return alert("AI ยังไม่พร้อมทำงาน กรุณารอสักครู่");
 
             const video = document.getElementById('video-reg');
-            showLoading();
+            // แสดง UI ว่ากำลังประมวลผล แต่ไม่ต้องบังทั้งจอ
+            const btnCapture = document.getElementById('btn-capture-face');
+            btnCapture.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังวิเคราะห์...';
+            btnCapture.disabled = true;
 
             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
             
+            btnCapture.disabled = false;
+            
             if (!detection) {
-                hideLoading();
                 alert("❌ AI มองไม่เห็นใบหน้าของคุณ กรุณาหันหน้าเข้าหากล้องให้ชัดเจน และให้มีแสงสว่างเพียงพอ");
+                btnCapture.innerHTML = `<i class="fas fa-brain mr-2"></i>วิเคราะห์ใบหน้า (${capturedFaceDescriptors.length + 1}/4)`;
                 return;
             }
 
@@ -471,11 +475,9 @@
             preview.classList.remove('hidden');
             document.getElementById(`reg-face-icon-${currentStep}`).classList.add('hidden');
 
-            hideLoading();
-
             if (capturedFaceDescriptors.length < 4) {
                 document.getElementById('camera-instruction').textContent = faceInstructions[capturedFaceDescriptors.length];
-                document.getElementById('btn-capture-face').innerHTML = `<i class="fas fa-brain mr-2"></i>วิเคราะห์ใบหน้า (${capturedFaceDescriptors.length + 1}/4)`;
+                btnCapture.innerHTML = `<i class="fas fa-brain mr-2"></i>วิเคราะห์ใบหน้า (${capturedFaceDescriptors.length + 1}/4)`;
             } else {
                 if(regStream) { regStream.getTracks().forEach(t => t.stop()); regStream = null; }
                 document.getElementById('reg-camera-container').classList.add('hidden');
@@ -501,15 +503,17 @@
             const lineId = `scan-line-${type.toLowerCase()}`;
             const btnId = `btn-scan-${type.toLowerCase()}`;
             
+            const scanBtn = document.getElementById(btnId);
+            if (scanBtn) scanBtn.disabled = true; // ป้องกันการกดปุ่มเบิ้ล
+
             document.getElementById(lineId).classList.remove('hidden'); 
-            document.getElementById(btnId).disabled = true; // ป้องกันการกดปุ่มเบิ้ล
 
             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
             
             document.getElementById(lineId).classList.add('hidden'); 
-            document.getElementById(btnId).disabled = false;
 
             if (!detection) {
+                if (scanBtn) scanBtn.disabled = false;
                 showScanError(type, "มองไม่เห็นใบหน้า กรุณามองหน้าตรงและอยู่ในที่ที่มีแสงสว่าง");
                 return;
             }
@@ -517,6 +521,7 @@
             const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
 
             if (bestMatch.label === 'unknown') {
+                if (scanBtn) scanBtn.disabled = false;
                 showScanError(type, "ไม่พบใบหน้าที่ลงทะเบียนไว้ กรุณาลองใหม่อีกครั้ง");
                 return;
             }
@@ -524,7 +529,7 @@
             const matchedIdCard = bestMatch.label;
             console.log(`Matched ID: ${matchedIdCard} (Error Distance: ${Math.round(bestMatch.distance * 100)}%)`);
 
-            processInstantScan(matchedIdCard, type);
+            submitScan(matchedIdCard, type);
         }
 
         function showScanError(type, message) {
@@ -536,58 +541,71 @@
             errorUi.classList.remove('hidden');
             speakThai(message);
             
+            // แสดงข้อความ Error ค้างไว้ 7 วินาที
             setTimeout(() => {
                 errorUi.classList.add('hidden');
+                waitingUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg">รอการสแกนใบหน้า...</p>';
                 waitingUi.classList.remove('hidden');
-            }, 2000); // ลดเวลาค้าง Error เหลือ 2 วินาที
+            }, 7000); 
         }
 
-        // --- ระบบทำงานแบบ Background Sync เพื่อแก้ปัญหาคิวช้า ---
-        function processInstantScan(idCard, type) {
-            const scanKey = idCard + '_' + type;
-            const now = Date.now();
-            // ป้องกันการสแกนซ้ำภายใน 1 นาที
-            if (recentScans[scanKey] && (now - recentScans[scanKey] < 60000)) {
-                return; 
-            }
-            recentScans[scanKey] = now;
-
-            const user = localUsersMap[idCard];
-            if (!user) return showScanError(type, "ข้อมูลพนักงานขัดข้อง");
-
+        function submitScan(idCard, type) {
+            const btnId = `btn-scan-${type.toLowerCase()}`;
+            const scanBtn = document.getElementById(btnId);
             const wUi = document.getElementById(`waiting-${type.toLowerCase()}`); 
             const sUi = document.getElementById(`result-${type.toLowerCase()}`); 
             const eUi = document.getElementById(`error-${type.toLowerCase()}`);
             
-            wUi.classList.add('hidden'); sUi.classList.add('hidden'); eUi.classList.add('hidden');
-            
-            const timeStr = new Date().toLocaleTimeString('th-TH');
+            if (scanBtn) scanBtn.disabled = true;
 
-            // โชว์หน้าสำเร็จทันที โดยไม่ต้องรอ Google Sheets
-            if(type === 'IN') {
-                document.getElementById('res-in-name').textContent = `${user.prefix}${user.firstName} ${user.lastName}`;
-                document.getElementById('res-in-pos').textContent = user.position; 
-                document.getElementById('res-in-type').textContent = user.personType;
-                document.getElementById('res-in-time').textContent = timeStr;
-                document.getElementById('res-in-status').textContent = 'บันทึกเวลาแล้ว'; 
-                document.getElementById('res-in-status').className = 'font-semibold col-span-2 text-green-600';
-                sUi.classList.remove('hidden'); 
-                speakThai('บันทึกเข้างานเรียบร้อยค่ะ คุณ' + user.firstName);
-            } else {
-                document.getElementById('res-out-name').textContent = `${user.prefix}${user.firstName} ${user.lastName}`;
-                document.getElementById('res-out-timeout').textContent = timeStr;
-                sUi.classList.remove('hidden'); 
-                speakThai('บันทึกเลิกงานเรียบร้อยค่ะ คุณ' + user.firstName);
-            }
+            // เปลี่ยนหน้าจอขวามือเป็นสถานะกำลังโหลด (ไม่ต้องใช้จอดำบังทั้งจอ)
+            wUi.innerHTML = '<i class="fas fa-spinner fa-spin text-6xl mb-4 text-blue-500"></i><p class="text-lg text-blue-600 font-bold">กำลังบันทึกข้อมูล...</p>';
+            wUi.classList.remove('hidden'); 
+            sUi.classList.add('hidden'); 
+            eUi.classList.add('hidden');
 
-            // ลดเวลาหน้าจอสำเร็จจาก 5 วินาที เหลือ 1.5 วินาที เพื่อให้คนต่อไปสแกนได้เลย
-            setTimeout(() => { 
-                sUi.classList.add('hidden'); 
-                wUi.classList.remove('hidden'); 
-            }, 1500);
-
-            // ยิงข้อมูลไป Google Sheets เบื้องหลัง
-            api.run('recordTime', { idCard: idCard, type: type }).catch(console.error);
+            api.run('recordTime', { idCard: idCard, type: type })
+                .then(res => {
+                    if (scanBtn) scanBtn.disabled = false;
+                    wUi.classList.add('hidden');
+                    
+                    if(res.success) {
+                        if(type === 'IN') {
+                            document.getElementById('res-in-name').textContent = `${res.user.prefix}${res.user.firstName} ${res.user.lastName}`;
+                            document.getElementById('res-in-pos').textContent = res.user.position; 
+                            document.getElementById('res-in-type').textContent = res.user.personType;
+                            document.getElementById('res-in-time').textContent = res.time + (res.lateMinutes > 0 ? ` (สาย ${res.lateMinutes} นาที)` : '');
+                            document.getElementById('res-in-status').textContent = res.status; 
+                            document.getElementById('res-in-status').className = res.status === 'ปกติ' ? 'font-semibold col-span-2 text-green-600' : 'font-semibold col-span-2 text-red-600';
+                            sUi.classList.remove('hidden'); 
+                            speakThai('บันทึกเข้างานเรียบร้อยค่ะ คุณ' + res.user.firstName);
+                        } else {
+                            document.getElementById('res-out-name').textContent = `${res.user.prefix}${res.user.firstName} ${res.user.lastName}`;
+                            document.getElementById('res-out-timeout').textContent = res.time;
+                            sUi.classList.remove('hidden'); 
+                            speakThai('บันทึกเลิกงานเรียบร้อยค่ะ คุณ' + res.user.firstName);
+                        }
+                        
+                        // แสดงข้อมูลสำเร็จค้างไว้ 7 วินาที
+                        setTimeout(() => { 
+                            sUi.classList.add('hidden'); 
+                            wUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg text-gray-400">รอการสแกนใบหน้า...</p>';
+                            wUi.classList.remove('hidden'); 
+                        }, 7000);
+                    } else {
+                        // กรณีสแกนซ้ำแล้ว หรือ Error อื่นๆ ให้แสดงในกล่องแดง (showScanError)
+                        if (res.code === 'NOT_FOUND') {
+                            showScanError(type, 'ไม่พบใบหน้าในระบบ');
+                        } else {
+                            showScanError(type, res.message); // แสดงข้อความ "วันนี้คุณได้สแกนลงเวลาเข้างานไปแล้วครับ"
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (scanBtn) scanBtn.disabled = false;
+                    showScanError(type, 'การเชื่อมต่อขัดข้อง');
+                    console.error(err);
+                });
         }
 
         // ==========================================
@@ -596,7 +614,12 @@
         function speakThai(text) {
             if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'th-TH'; window.speechSynthesis.speak(u); }
         }
-        function handleServerError(err) { hideLoading(); alert('ระบบขัดข้อง: ' + err.message); console.error(err); }
+        
+        function handleServerError(err) { 
+            hideLoading(); 
+            // ลดการใช้ alert บังหน้าจอ เปลี่ยนเป็น log ลง console
+            console.error('ระบบขัดข้อง:', err.message || err); 
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
@@ -630,7 +653,16 @@
             document.getElementById(`tab-${tabId}`).className = 'px-4 py-3 tab-active focus:outline-none flex items-center text-lg';
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
 
-            ['in', 'out'].forEach(tId => { if(document.getElementById(`result-${tId}`)) document.getElementById(`result-${tId}`).classList.add('hidden'); if(document.getElementById(`error-${tId}`)) document.getElementById(`error-${tId}`).classList.add('hidden'); if(document.getElementById(`waiting-${tId}`)) document.getElementById(`waiting-${tId}`).classList.remove('hidden'); });
+            ['in', 'out'].forEach(tId => { 
+                if(document.getElementById(`result-${tId}`)) document.getElementById(`result-${tId}`).classList.add('hidden'); 
+                if(document.getElementById(`error-${tId}`)) document.getElementById(`error-${tId}`).classList.add('hidden'); 
+                
+                const wUi = document.getElementById(`waiting-${tId}`);
+                if(wUi) {
+                    wUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg text-gray-400">รอการสแกนใบหน้า...</p>';
+                    wUi.classList.remove('hidden'); 
+                }
+            });
 
             if (tabId === 'in' || tabId === 'out') startCamera(`video-${tabId}`);
         }
