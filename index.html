@@ -26,27 +26,43 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .print-show { display: none; }
+        
+        /* --- อัปเดต: ตั้งค่า CSS สำหรับการพิมพ์ให้เต็มหน้ากระดาษ --- */
         @media print {
-            body { background-color: #fff; color: #000; font-size: 11pt; }
-            header, nav, .no-print { display: none !important; }
-            .glass-panel { background: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-            main { padding: 0 !important; overflow: visible !important; }
-            span.print-show { display: inline-block !important; }
-            div.print-show { display: block !important; }
-            #daily-summary { display: flex !important; width: 100%; margin-bottom: 20px; flex-direction: row; gap: 8px; justify-content: space-between; }
-            #daily-summary > div { border: 1px solid #ccc !important; flex: 1; margin: 0; padding: 10px 5px !important; border-radius: 6px; box-shadow: none !important; }
-            table { width: 100%; border-collapse: collapse; font-size: 9.5pt; } 
-            table th, table td { border: 1px solid #999 !important; padding: 6px 8px !important; }
-            table th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tr { page-break-inside: avoid; break-inside: avoid; }
-            .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50, .bg-purple-50 { background-color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             @page { margin: 10mm; size: A4 portrait; }
+            body { background-color: #fff; color: #000; font-size: 11pt; margin: 0; padding: 0; }
+            header, nav, .no-print { display: none !important; }
+            
+            /* ปลดล็อกขีดจำกัดความกว้างของ Tailwind ทั้งหมด ให้ขยาย 100% */
+            main, .container, #view-admin, #admin-dashboard, .max-w-5xl, .max-w-6xl { 
+                max-width: 100% !important; 
+                width: 100% !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            .glass-panel { background: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            
+            /* ปลดล็อกให้ตารางไม่ถูกบีบ และเอา scrollbar ออก */
+            .overflow-x-auto, .overflow-y-auto { overflow: visible !important; border: none !important; }
+            
+            span.print-show { display: inline-block !important; }
+            div.print-show { display: block !important; text-align: center; margin-bottom: 20px; }
+            
+            #daily-summary { display: flex !important; width: 100% !important; margin-bottom: 20px; flex-direction: row; gap: 10px; justify-content: space-between; page-break-inside: avoid; }
+            #daily-summary > div { border: 1px solid #ccc !important; flex: 1 !important; margin: 0; padding: 10px 5px !important; border-radius: 6px; box-shadow: none !important; text-align: center; }
+            
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; } 
+            table th, table td { border: 1px solid #777 !important; padding: 8px !important; }
+            table th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tr { page-break-inside: avoid; break-inside: avoid; }
+            
+            .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50, .bg-purple-50 { background-color: #fff !important; border-color: #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
 <body class="text-gray-800 h-screen flex flex-col relative">
 
-    <!-- เพิ่ม: IP Security Overlay -->
+    <!-- IP Security Overlay -->
     <div id="ip-block-overlay" class="fixed inset-0 bg-blue-900 bg-opacity-95 z-[100] flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-lg mx-4 w-full transform transition-all">
             <div id="ip-checking-ui">
@@ -75,7 +91,7 @@
     </div>
 
     <!-- Header -->
-    <header class="bg-blue-900 text-white shadow-lg">
+    <header class="bg-blue-900 text-white shadow-lg print:hidden">
         <div class="container mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center text-blue-900 text-3xl shadow-md"><i class="fas fa-balance-scale"></i></div>
@@ -89,7 +105,7 @@
     </header>
 
     <!-- Main Navigation -->
-    <nav class="bg-white shadow">
+    <nav class="bg-white shadow print:hidden">
         <div class="container mx-auto px-4 flex justify-center space-x-2 md:space-x-8">
             <button onclick="switchTab('in')" id="tab-in" class="px-4 py-3 text-gray-600 tab-active focus:outline-none flex items-center text-lg"><i class="fas fa-sign-in-alt mr-2"></i> ลงเวลาเข้า</button>
             <button onclick="switchTab('out')" id="tab-out" class="px-4 py-3 text-gray-600 focus:outline-none flex items-center text-lg"><i class="fas fa-sign-out-alt mr-2"></i> ลงเวลาออก</button>
@@ -98,10 +114,10 @@
     </nav>
 
     <!-- Content Area -->
-    <main class="flex-grow container mx-auto px-4 py-8 overflow-y-auto">
+    <main class="flex-grow container mx-auto px-4 py-8 overflow-y-auto w-full">
         
         <!-- TAB: สแกนเข้า -->
-        <div id="view-in" class="max-w-5xl mx-auto space-y-6">
+        <div id="view-in" class="max-w-5xl mx-auto space-y-6 print:hidden">
             <div class="text-center">
                 <h2 class="text-2xl font-bold text-gray-800">บันทึกเวลามาปฏิบัติราชการ (ลงเวลาเข้า)</h2>
                 <p class="text-gray-500">กรุณามองที่กล้องให้ใบหน้าอยู่ในกรอบ แล้วกดปุ่มสแกน</p>
@@ -143,7 +159,7 @@
         </div>
 
         <!-- TAB: สแกนออก -->
-        <div id="view-out" class="max-w-5xl mx-auto space-y-6 hidden">
+        <div id="view-out" class="max-w-5xl mx-auto space-y-6 hidden print:hidden">
             <div class="text-center">
                 <h2 class="text-2xl font-bold text-gray-800">บันทึกเวลาเลิกปฏิบัติราชการ (ลงเวลาออก)</h2>
                 <p class="text-gray-500">กรุณามองที่กล้องให้ใบหน้าอยู่ในกรอบ แล้วกดปุ่มสแกน</p>
@@ -182,9 +198,9 @@
         </div>
 
         <!-- TAB: ผู้ดูแลระบบ -->
-        <div id="view-admin" class="max-w-6xl mx-auto hidden">
+        <div id="view-admin" class="max-w-6xl w-full mx-auto hidden block">
             <!-- Login -->
-            <div id="admin-login" class="max-w-md mx-auto mt-10 p-8 glass-panel rounded-2xl shadow-xl text-center">
+            <div id="admin-login" class="max-w-md mx-auto mt-10 p-8 glass-panel rounded-2xl shadow-xl text-center no-print">
                 <div class="text-4xl text-gray-400 mb-4"><i class="fas fa-lock"></i></div>
                 <h2 class="text-2xl font-bold mb-6">เข้าสู่ระบบผู้ดูแล</h2>
                 <input type="password" id="admin-pwd" class="w-full px-4 py-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="รหัสผ่าน">
@@ -302,7 +318,7 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap md:flex-nowrap justify-between gap-2 mb-6 text-sm md:text-base" id="daily-summary"></div>
-                    <div class="overflow-x-auto rounded-lg border">
+                    <div class="overflow-x-auto rounded-lg border w-full">
                         <table class="w-full text-left border-collapse bg-white">
                             <thead>
                                 <tr class="bg-gray-100 text-gray-600 text-sm">
@@ -324,7 +340,7 @@
                         </div>
                     </div>
                     <div class="flex space-x-2 mb-4 overflow-x-auto no-print" id="monthly-type-filters"></div>
-                    <div class="overflow-x-auto rounded-lg border">
+                    <div class="overflow-x-auto rounded-lg border w-full">
                         <table class="w-full text-left border-collapse bg-white">
                             <thead>
                                 <tr class="bg-gray-100 text-gray-600 text-sm whitespace-nowrap">
@@ -347,7 +363,7 @@
         <div class="bg-white p-6 rounded-xl shadow-xl flex flex-col items-center"><div class="loader mb-4"></div><p class="text-gray-700 font-medium">กำลังประมวลผล...</p></div>
     </div>
 
-    <!-- Script ของแอปพลิเคชันหลัก (ทำงานบน GitHub Pages แบบ Standalone 100%) -->
+    <!-- Script ของแอปพลิเคชันหลัก -->
     <script>
         // ==========================================
         // 1. ตั้งค่าการเชื่อมต่อ API (จาก Google Apps Script)
@@ -355,7 +371,7 @@
         // URL จากการ Deploy ของคุณ
         const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyOnRrQhQocvAMJbxDY0Bm5HTViKL_cZZ_eCqQPG6JHYk7Oud6WAavLk6Q-WkLuCK1e/exec'; 
         
-        // ชุดคำสั่งสำหรับเรียกใช้ API แทน google.script.run
+        // ชุดคำสั่งสำหรับเรียกใช้ API
         const api = {
             run: function(action, params = {}) {
                 return new Promise((resolve, reject) => {
@@ -385,6 +401,7 @@
         let isAiReady = false;
         let faceMatcher = null; 
         let localUsersMap = {}; 
+        let recentScans = {}; 
 
         let currentStream = null;
         let regStream = null; 
@@ -393,6 +410,66 @@
         const faceInstructions = ["ภาพที่ 1: กรุณามองหน้าตรง", "ภาพที่ 2: หันหน้าไปทางซ้ายเล็กน้อย", "ภาพที่ 3: หันหน้าไปทางขวาเล็กน้อย", "ภาพที่ 4: ยิ้ม หรือ ถอดแว่นตา"];
         let isEditingUser = false; 
         let isAppInitialized = false; 
+
+        // ==========================================
+        // ระบบตรวจสอบวง LAN IP
+        // ==========================================
+        const checkIpRange = () => {
+            const overlay = document.getElementById('ip-block-overlay');
+            const checkingUi = document.getElementById('ip-checking-ui');
+            const errorUi = document.getElementById('ip-error-ui');
+
+            if(overlay) overlay.classList.remove('hidden');
+            if(checkingUi) checkingUi.classList.remove('hidden');
+            if(errorUi) errorUi.classList.add('hidden');
+
+            window.RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+            if (!window.RTCPeerConnection) return showIpError('เบราว์เซอร์ไม่รองรับการตรวจสอบ IP');
+
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            try {
+                pc.createDataChannel('');
+                pc.createOffer().then(pc.setLocalDescription.bind(pc)).catch(e => showIpError('เกิดข้อผิดพลาดในการตรวจสอบเครือข่าย'));
+            } catch (e) {
+                return showIpError('โปรดอนุญาตให้เข้าถึงเครือข่าย');
+            }
+
+            let ipFound = false;
+            pc.onicecandidate = (ice) => {
+                if (ipFound || !ice || !ice.candidate || !ice.candidate.candidate) return;
+                const match = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                if (match) {
+                    ipFound = true;
+                    pc.onicecandidate = null;
+                    const myIP = match[1];
+
+                    // เช็คว่า IP ขึ้นต้นด้วย 10.39. หรือไม่
+                    if (myIP.startsWith('10.39.')) {
+                        if(overlay) overlay.classList.add('hidden');
+                        initializeApp(); // ถ้าใช่ ให้เปิดระบบหลักทำงาน
+                        return;
+                    } else {
+                        showIpError(`IP เครื่องของคุณคือ ${myIP}<br>อยู่นอกเหนือเครือข่ายที่อนุญาต (10.39.x.x)`);
+                    }
+                }
+            };
+
+            setTimeout(() => {
+                if (!ipFound) {
+                    showIpError('ไม่สามารถดึงหมายเลข IP ของเครื่องได้<br>กรุณาตั้งค่าเบราว์เซอร์ปิดการซ่อน IP (WebRTC)');
+                }
+            }, 3000);
+
+            function showIpError(text) {
+                if(checkingUi) checkingUi.classList.add('hidden');
+                if(errorUi) errorUi.classList.remove('hidden');
+                document.getElementById('ip-error-msg').innerHTML = text;
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkIpRange(); 
+        });
 
         // ==========================================
         // 2. โหลดสมอง AI (Load Models) เมื่อเปิดเว็บ
@@ -410,7 +487,7 @@
                 loadUsersAndTrainAI();
             } catch (err) {
                 console.error("❌ Failed to load AI Models:", err);
-                document.getElementById('ai-loading-text').innerHTML = "<span class='text-red-500 font-bold'>โหลดโมเดล AI ล้มเหลว กรุณาตรวจสอบว่ามีโฟลเดอร์ models อยู่ใน GitHub หรือไม่</span>";
+                document.getElementById('ai-loading-text').innerHTML = "<span class='text-red-500 font-bold'>โหลดโมเดล AI ล้มเหลว กรุณาตรวจสอบลิงก์ หรืออินเทอร์เน็ต</span>";
             }
         }
 
@@ -433,7 +510,7 @@
                                 if (parsedArr && parsedArr.length === 128) {
                                     descriptorsArray.push(new Float32Array(parsedArr));
                                 }
-                            } catch(e) { console.warn("Invalid face data for", user.idCard); }
+                            } catch(e) { }
                         });
 
                         if (descriptorsArray.length > 0) {
@@ -446,7 +523,7 @@
                         console.log(`✅ AI is now trained with ${labeledFaceDescriptors.length} users.`);
                     } else {
                         faceMatcher = null;
-                        console.log("⚠️ ไม่มีข้อมูลใบหน้าพนักงานในระบบ แอดมินต้องลงทะเบียนก่อน");
+                        console.log("⚠️ ไม่มีข้อมูลใบหน้าพนักงานในระบบ");
                     }
                     
                     document.getElementById('ai-loading-overlay').classList.add('hidden');
@@ -464,7 +541,6 @@
             if (!isAiReady) return alert("AI ยังไม่พร้อมทำงาน กรุณารอสักครู่");
 
             const video = document.getElementById('video-reg');
-            // แสดง UI ว่ากำลังประมวลผล แต่ไม่ต้องบังทั้งจอ
             const btnCapture = document.getElementById('btn-capture-face');
             btnCapture.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังวิเคราะห์...';
             btnCapture.disabled = true;
@@ -523,7 +599,7 @@
             const btnId = `btn-scan-${type.toLowerCase()}`;
             
             const scanBtn = document.getElementById(btnId);
-            if (scanBtn) scanBtn.disabled = true; // ป้องกันการกดปุ่มเบิ้ล
+            if (scanBtn) scanBtn.disabled = true;
 
             document.getElementById(lineId).classList.remove('hidden'); 
 
@@ -546,21 +622,21 @@
             }
 
             const matchedIdCard = bestMatch.label;
-            console.log(`Matched ID: ${matchedIdCard} (Error Distance: ${Math.round(bestMatch.distance * 100)}%)`);
-
-            submitScan(matchedIdCard, type);
+            processInstantScan(matchedIdCard, type);
         }
 
         function showScanError(type, message) {
             const errorUi = document.getElementById(`error-${type.toLowerCase()}`);
             const waitingUi = document.getElementById(`waiting-${type.toLowerCase()}`);
+            const sUi = document.getElementById(`result-${type.toLowerCase()}`); 
             
-            waitingUi.classList.add('hidden');
+            if(sUi) sUi.classList.add('hidden');
+            if(waitingUi) waitingUi.classList.add('hidden');
+            
             document.getElementById(`err-${type.toLowerCase()}-msg`).textContent = message;
             errorUi.classList.remove('hidden');
             speakThai(message);
             
-            // แสดงข้อความ Error ค้างไว้ 7 วินาที
             setTimeout(() => {
                 errorUi.classList.add('hidden');
                 waitingUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg">รอการสแกนใบหน้า...</p>';
@@ -568,63 +644,62 @@
             }, 7000); 
         }
 
-        function submitScan(idCard, type) {
-            const btnId = `btn-scan-${type.toLowerCase()}`;
-            const scanBtn = document.getElementById(btnId);
+        function processInstantScan(idCard, type) {
+            const scanKey = idCard + '_' + type;
+            const now = Date.now();
+            if (recentScans[scanKey] && (now - recentScans[scanKey] < 60000)) {
+                const btnId = `btn-scan-${type.toLowerCase()}`;
+                const scanBtn = document.getElementById(btnId);
+                if (scanBtn) scanBtn.disabled = false;
+                return; // กันสแกนเบิ้ล
+            }
+            recentScans[scanKey] = now;
+
+            const user = localUsersMap[idCard];
+            if (!user) return showScanError(type, "ข้อมูลพนักงานขัดข้อง");
+
             const wUi = document.getElementById(`waiting-${type.toLowerCase()}`); 
             const sUi = document.getElementById(`result-${type.toLowerCase()}`); 
             const eUi = document.getElementById(`error-${type.toLowerCase()}`);
+            const btnId = `btn-scan-${type.toLowerCase()}`;
+            const scanBtn = document.getElementById(btnId);
             
-            if (scanBtn) scanBtn.disabled = true;
+            wUi.classList.add('hidden'); sUi.classList.add('hidden'); eUi.classList.add('hidden');
+            
+            const timeStr = new Date().toLocaleTimeString('th-TH');
 
-            // เปลี่ยนหน้าจอขวามือเป็นสถานะกำลังโหลด (ไม่ต้องใช้จอดำบังทั้งจอ)
-            wUi.innerHTML = '<i class="fas fa-spinner fa-spin text-6xl mb-4 text-blue-500"></i><p class="text-lg text-blue-600 font-bold">กำลังบันทึกข้อมูล...</p>';
-            wUi.classList.remove('hidden'); 
-            sUi.classList.add('hidden'); 
-            eUi.classList.add('hidden');
+            if(type === 'IN') {
+                document.getElementById('res-in-name').textContent = `${user.prefix}${user.firstName} ${user.lastName}`;
+                document.getElementById('res-in-pos').textContent = user.position; 
+                document.getElementById('res-in-type').textContent = user.personType;
+                document.getElementById('res-in-time').textContent = timeStr;
+                document.getElementById('res-in-status').textContent = 'บันทึกเวลาแล้ว'; 
+                document.getElementById('res-in-status').className = 'font-semibold col-span-2 text-green-600';
+                sUi.classList.remove('hidden'); 
+                speakThai('บันทึกเข้างานเรียบร้อยค่ะ คุณ' + user.firstName);
+            } else {
+                document.getElementById('res-out-name').textContent = `${user.prefix}${user.firstName} ${user.lastName}`;
+                document.getElementById('res-out-timeout').textContent = timeStr;
+                sUi.classList.remove('hidden'); 
+                speakThai('บันทึกเลิกงานเรียบร้อยค่ะ คุณ' + user.firstName);
+            }
 
+            setTimeout(() => { 
+                sUi.classList.add('hidden'); 
+                wUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg">รอการสแกนใบหน้า...</p>';
+                wUi.classList.remove('hidden'); 
+                if (scanBtn) scanBtn.disabled = false;
+            }, 1500);
+
+            // ยิงข้อมูลไป Google Sheets เบื้องหลัง
             api.run('recordTime', { idCard: idCard, type: type })
-                .then(res => {
-                    if (scanBtn) scanBtn.disabled = false;
-                    wUi.classList.add('hidden');
-                    
-                    if(res.success) {
-                        if(type === 'IN') {
-                            document.getElementById('res-in-name').textContent = `${res.user.prefix}${res.user.firstName} ${res.user.lastName}`;
-                            document.getElementById('res-in-pos').textContent = res.user.position; 
-                            document.getElementById('res-in-type').textContent = res.user.personType;
-                            document.getElementById('res-in-time').textContent = res.time + (res.lateMinutes > 0 ? ` (สาย ${res.lateMinutes} นาที)` : '');
-                            document.getElementById('res-in-status').textContent = res.status; 
-                            document.getElementById('res-in-status').className = res.status === 'ปกติ' ? 'font-semibold col-span-2 text-green-600' : 'font-semibold col-span-2 text-red-600';
-                            sUi.classList.remove('hidden'); 
-                            speakThai('บันทึกเข้างานเรียบร้อยค่ะ คุณ' + res.user.firstName);
-                        } else {
-                            document.getElementById('res-out-name').textContent = `${res.user.prefix}${res.user.firstName} ${res.user.lastName}`;
-                            document.getElementById('res-out-timeout').textContent = res.time;
-                            sUi.classList.remove('hidden'); 
-                            speakThai('บันทึกเลิกงานเรียบร้อยค่ะ คุณ' + res.user.firstName);
-                        }
-                        
-                        // แสดงข้อมูลสำเร็จค้างไว้ 7 วินาที
-                        setTimeout(() => { 
-                            sUi.classList.add('hidden'); 
-                            wUi.innerHTML = '<i class="fas fa-id-badge text-6xl mb-4 text-gray-300"></i><p class="text-lg text-gray-400">รอการสแกนใบหน้า...</p>';
-                            wUi.classList.remove('hidden'); 
-                        }, 7000);
-                    } else {
-                        // กรณีสแกนซ้ำแล้ว หรือ Error อื่นๆ ให้แสดงในกล่องแดง (showScanError)
-                        if (res.code === 'NOT_FOUND') {
-                            showScanError(type, 'ไม่พบใบหน้าในระบบ');
-                        } else {
-                            showScanError(type, res.message); // แสดงข้อความ "วันนี้คุณได้สแกนลงเวลาเข้างานไปแล้วครับ"
-                        }
-                    }
-                })
-                .catch(err => {
-                    if (scanBtn) scanBtn.disabled = false;
-                    showScanError(type, 'การเชื่อมต่อขัดข้อง');
-                    console.error(err);
-                });
+               .then(res => {
+                   if(!res.success && res.message.includes('สแกนลงเวลา')) {
+                        // หาก Google Sheets ตอบกลับมาว่าสแกนซ้ำ จะโชว์แจ้งเตือน 
+                        setTimeout(() => showScanError(type, res.message), 1600);
+                   }
+               })
+               .catch(console.error);
         }
 
         // ==========================================
@@ -636,69 +711,8 @@
         
         function handleServerError(err) { 
             hideLoading(); 
-            // ลดการใช้ alert บังหน้าจอ เปลี่ยนเป็น log ลง console
             console.error('ระบบขัดข้อง:', err.message || err); 
         }
-
-        // เพิ่มฟังก์ชันตรวจสอบวง LAN IP
-        const checkIpRange = () => {
-            const overlay = document.getElementById('ip-block-overlay');
-            const checkingUi = document.getElementById('ip-checking-ui');
-            const errorUi = document.getElementById('ip-error-ui');
-
-            if(overlay) overlay.classList.remove('hidden');
-            if(checkingUi) checkingUi.classList.remove('hidden');
-            if(errorUi) errorUi.classList.add('hidden');
-
-            window.RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-            if (!window.RTCPeerConnection) return showIpError('เบราว์เซอร์ไม่รองรับการตรวจสอบ IP');
-
-            const pc = new RTCPeerConnection({ iceServers: [] });
-            try {
-                pc.createDataChannel('');
-                pc.createOffer().then(pc.setLocalDescription.bind(pc)).catch(e => showIpError('เกิดข้อผิดพลาดในการตรวจสอบเครือข่าย'));
-            } catch (e) {
-                return showIpError('โปรดอนุญาตให้เข้าถึงเครือข่าย');
-            }
-
-            let ipFound = false;
-            pc.onicecandidate = (ice) => {
-                if (ipFound || !ice || !ice.candidate || !ice.candidate.candidate) return;
-                const match = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
-                if (match) {
-                    ipFound = true;
-                    pc.onicecandidate = null;
-                    const myIP = match[1];
-
-                    // เช็คว่า IP ขึ้นต้นด้วย 10.39. หรือไม่
-                    if (myIP.startsWith('10.39.')) {
-                        if(overlay) overlay.classList.add('hidden');
-                        initializeApp(); // ถ้าใช่ ให้เปิดระบบหลักทำงาน
-                        return;
-                    } else {
-                        showIpError(`IP เครื่องของคุณคือ ${myIP}<br>อยู่นอกเหนือเครือข่ายที่อนุญาต (10.39.x.x)`);
-                    }
-                }
-            };
-
-            // กรณีหา IP ไม่เจอภายใน 3 วินาที (เช่น ถูกเบราว์เซอร์ซ่อนไว้)
-            setTimeout(() => {
-                if (!ipFound) {
-                    showIpError('ไม่สามารถดึงหมายเลข IP ของเครื่องได้<br>กรุณาตั้งค่าเบราว์เซอร์ตามคู่มือเพื่ออนุญาตการเช็ค IP');
-                }
-            }, 3000);
-
-            function showIpError(text) {
-                if(checkingUi) checkingUi.classList.add('hidden');
-                if(errorUi) errorUi.classList.remove('hidden');
-                document.getElementById('ip-error-msg').innerHTML = text;
-            }
-        };
-
-        // เปลี่ยนให้รัน checkIpRange ก่อน initializeApp
-        document.addEventListener('DOMContentLoaded', () => {
-            checkIpRange(); 
-        });
 
         function initializeApp() {
             if (isAppInitialized) return; isAppInitialized = true;
