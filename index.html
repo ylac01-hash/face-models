@@ -27,36 +27,41 @@
 
         .print-show { display: none; }
         
-        /* --- อัปเดต: ตั้งค่า CSS สำหรับการพิมพ์ให้เต็มหน้ากระดาษ --- */
+        /* ==========================================
+           ตั้งค่าหน้ากระดาษและแก้ปัญหาการพิมพ์ (Print CSS)
+        ========================================== */
         @media print {
             @page { margin: 10mm; size: A4 portrait; }
-            body { background-color: #fff; color: #000; font-size: 11pt; margin: 0; padding: 0; }
-            header, nav, .no-print { display: none !important; }
             
-            /* ปลดล็อกขีดจำกัดความกว้างของ Tailwind ทั้งหมด ให้ขยาย 100% */
-            main, .container, #view-admin, #admin-dashboard, .max-w-5xl, .max-w-6xl { 
-                max-width: 100% !important; 
-                width: 100% !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-            }
-            .glass-panel { background: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            /* รีเซ็ตโครงสร้าง Flexbox ของ Tailwind ที่บีบหน้าจอตอนพิมพ์ */
+            body, html { display: block !important; width: 100% !important; height: auto !important; background-color: #fff; color: #000; font-size: 11pt; margin: 0; padding: 0; }
+            header, nav, footer, .no-print { display: none !important; }
             
-            /* ปลดล็อกให้ตารางไม่ถูกบีบ และเอา scrollbar ออก */
-            .overflow-x-auto, .overflow-y-auto { overflow: visible !important; border: none !important; }
+            main { display: block !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; }
+            
+            .container, .max-w-5xl, .max-w-6xl { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
+            
+            #view-admin, #admin-dashboard, #aview-daily, #aview-monthly { display: block !important; width: 100% !important; max-width: 100% !important; }
+            
+            .glass-panel { background: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: none !important; }
+            
+            /* ปลดล็อกให้ตารางขยาย 100% และเอา scrollbar ออก */
+            .overflow-x-auto, .overflow-y-auto { overflow: visible !important; border: none !important; width: 100% !important; display: block !important; margin: 0 !important; }
             
             span.print-show { display: inline-block !important; }
-            div.print-show { display: block !important; text-align: center; margin-bottom: 20px; }
+            div.print-show { display: block !important; text-align: center; margin-bottom: 20px; width: 100% !important; }
             
+            /* ส่วนหัวข้อสรุป */
             #daily-summary { display: flex !important; width: 100% !important; margin-bottom: 20px; flex-direction: row; gap: 10px; justify-content: space-between; page-break-inside: avoid; }
             #daily-summary > div { border: 1px solid #ccc !important; flex: 1 !important; margin: 0; padding: 10px 5px !important; border-radius: 6px; box-shadow: none !important; text-align: center; }
             
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; } 
-            table th, table td { border: 1px solid #777 !important; padding: 8px !important; }
+            /* โครงสร้างตารางให้เต็ม 100% */
+            table { width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; table-layout: auto !important; margin: 0 !important; } 
+            table th, table td { border: 1px solid #777 !important; padding: 8px !important; word-wrap: break-word; }
             table th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             tr { page-break-inside: avoid; break-inside: avoid; }
             
-            .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50, .bg-purple-50 { background-color: #fff !important; border-color: #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50, .bg-purple-50 { background-color: #fff !important; border-color: #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important;}
         }
     </style>
 </head>
@@ -368,10 +373,8 @@
         // ==========================================
         // 1. ตั้งค่าการเชื่อมต่อ API (จาก Google Apps Script)
         // ==========================================
-        // URL จากการ Deploy ของคุณ
         const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyOnRrQhQocvAMJbxDY0Bm5HTViKL_cZZ_eCqQPG6JHYk7Oud6WAavLk6Q-WkLuCK1e/exec'; 
         
-        // ชุดคำสั่งสำหรับเรียกใช้ API
         const api = {
             run: function(action, params = {}) {
                 return new Promise((resolve, reject) => {
@@ -443,10 +446,9 @@
                     pc.onicecandidate = null;
                     const myIP = match[1];
 
-                    // เช็คว่า IP ขึ้นต้นด้วย 10.39. หรือไม่
                     if (myIP.startsWith('10.39.')) {
                         if(overlay) overlay.classList.add('hidden');
-                        initializeApp(); // ถ้าใช่ ให้เปิดระบบหลักทำงาน
+                        initializeApp(); 
                         return;
                     } else {
                         showIpError(`IP เครื่องของคุณคือ ${myIP}<br>อยู่นอกเหนือเครือข่ายที่อนุญาต (10.39.x.x)`);
@@ -651,7 +653,7 @@
                 const btnId = `btn-scan-${type.toLowerCase()}`;
                 const scanBtn = document.getElementById(btnId);
                 if (scanBtn) scanBtn.disabled = false;
-                return; // กันสแกนเบิ้ล
+                return; 
             }
             recentScans[scanKey] = now;
 
@@ -695,7 +697,6 @@
             api.run('recordTime', { idCard: idCard, type: type })
                .then(res => {
                    if(!res.success && res.message.includes('สแกนลงเวลา')) {
-                        // หาก Google Sheets ตอบกลับมาว่าสแกนซ้ำ จะโชว์แจ้งเตือน 
                         setTimeout(() => showScanError(type, res.message), 1600);
                    }
                })
