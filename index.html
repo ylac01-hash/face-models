@@ -46,6 +46,25 @@
 </head>
 <body class="text-gray-800 h-screen flex flex-col relative">
 
+    <!-- เพิ่ม: IP Security Overlay -->
+    <div id="ip-block-overlay" class="fixed inset-0 bg-blue-900 bg-opacity-95 z-[100] flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-lg mx-4 w-full transform transition-all">
+            <div id="ip-checking-ui">
+                <div class="loader mx-auto mb-6 border-blue-500"></div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">กำลังตรวจสอบเครือข่าย...</h2>
+                <p class="text-gray-500">กรุณารอสักครู่ ระบบกำลังยืนยันสิทธิ์สถานที่ทำงาน</p>
+            </div>
+            
+            <div id="ip-error-ui" class="hidden">
+                <div class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner"><i class="fas fa-network-wired"></i></div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-3">ปฏิเสธการเข้าถึง</h2>
+                <p class="text-gray-600 mb-6">ระบบจำกัดให้ลงเวลาได้เฉพาะภายในเครือข่ายของศาลจังหวัดยะลาเท่านั้น</p>
+                <div class="p-4 bg-gray-50 text-red-700 rounded-lg border border-red-200 text-sm font-medium mb-4" id="ip-error-msg"></div>
+                <button onclick="checkIpRange()" class="px-6 py-2 bg-blue-600 text-white rounded-full font-bold hover:bg-blue-700 transition w-full"><i class="fas fa-sync-alt mr-2"></i> ลองตรวจสอบอีกครั้ง</button>
+            </div>
+        </div>
+    </div>
+
     <!-- AI Model Loading Overlay -->
     <div id="ai-loading-overlay" class="fixed inset-0 bg-black bg-opacity-80 z-[90] flex items-center justify-center backdrop-blur-sm hidden">
         <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md mx-4 w-full">
@@ -621,8 +640,64 @@
             console.error('ระบบขัดข้อง:', err.message || err); 
         }
 
+        // เพิ่มฟังก์ชันตรวจสอบวง LAN IP
+        const checkIpRange = () => {
+            const overlay = document.getElementById('ip-block-overlay');
+            const checkingUi = document.getElementById('ip-checking-ui');
+            const errorUi = document.getElementById('ip-error-ui');
+
+            if(overlay) overlay.classList.remove('hidden');
+            if(checkingUi) checkingUi.classList.remove('hidden');
+            if(errorUi) errorUi.classList.add('hidden');
+
+            window.RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+            if (!window.RTCPeerConnection) return showIpError('เบราว์เซอร์ไม่รองรับการตรวจสอบ IP');
+
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            try {
+                pc.createDataChannel('');
+                pc.createOffer().then(pc.setLocalDescription.bind(pc)).catch(e => showIpError('เกิดข้อผิดพลาดในการตรวจสอบเครือข่าย'));
+            } catch (e) {
+                return showIpError('โปรดอนุญาตให้เข้าถึงเครือข่าย');
+            }
+
+            let ipFound = false;
+            pc.onicecandidate = (ice) => {
+                if (ipFound || !ice || !ice.candidate || !ice.candidate.candidate) return;
+                const match = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                if (match) {
+                    ipFound = true;
+                    pc.onicecandidate = null;
+                    const myIP = match[1];
+
+                    // เช็คว่า IP ขึ้นต้นด้วย 10.39. หรือไม่
+                    if (myIP.startsWith('10.39.')) {
+                        if(overlay) overlay.classList.add('hidden');
+                        initializeApp(); // ถ้าใช่ ให้เปิดระบบหลักทำงาน
+                        return;
+                    } else {
+                        showIpError(`IP เครื่องของคุณคือ ${myIP}<br>อยู่นอกเหนือเครือข่ายที่อนุญาต (10.39.x.x)`);
+                    }
+                }
+            };
+
+            // กรณีหา IP ไม่เจอภายใน 3 วินาที (เช่น ถูกเบราว์เซอร์ซ่อนไว้)
+            setTimeout(() => {
+                if (!ipFound) {
+                    showIpError('ไม่สามารถดึงหมายเลข IP ของเครื่องได้<br>กรุณาตั้งค่าเบราว์เซอร์ตามคู่มือเพื่ออนุญาตการเช็ค IP');
+                }
+            }, 3000);
+
+            function showIpError(text) {
+                if(checkingUi) checkingUi.classList.add('hidden');
+                if(errorUi) errorUi.classList.remove('hidden');
+                document.getElementById('ip-error-msg').innerHTML = text;
+            }
+        };
+
+        // เปลี่ยนให้รัน checkIpRange ก่อน initializeApp
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            checkIpRange(); 
         });
 
         function initializeApp() {
